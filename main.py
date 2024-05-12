@@ -13,13 +13,20 @@ clock = pygame.time.Clock()
 FPS = 60
 font_size = 20
 font = pygame.font.SysFont(pygame.font.get_fonts()[0], font_size)
-num_particles = 2500
+num_particles = 25000
 
 # gravitational constant for this sim
 grav = 9.8
 
+particle_mass = 1
+grav_points_mass = 10
+
 # pointsof gravity
 grav_points = []
+grav_p_vels = []
+# TODO: p_vels should be used as velocities for the grav_points, so they are not constant to produce elliptical orbits
+
+movable_grav_points = True
 
 percent = 0.05
 offset = 200
@@ -38,24 +45,29 @@ def handle_events():
                     pass
         if event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:
-                grav_points.append(pygame.mouse.get_pos())
+                pos = pygame.mouse.get_pos()
+                grav_points.append([i for i in pos])
+                grav_p_vels.append([0, 0])
 
 
 # particle class
 class Particle:
     def __init__(self, pos, vel=[0, 0]):
         self.x, self.y = pos  # position of particle
-        self.x_v, self.y_v = vel  # velocity of particle [currently only 0 at init]
+        self.x_v, self.y_v = vel  # velocity of particle
 
     def update(self):
         # update gravity
         total_gravity = [0, 0]
-
-        for pos in grav_points:
-            rel_pos = [pos[0] - self.x, pos[1] - self.y]
-            force = grav / (rel_pos[0] * rel_pos[0] + rel_pos[1] * rel_pos[1])
+        for pos in range(len(grav_points)):
+            rel_pos = [grav_points[pos][0] - self.x, grav_points[pos][1] - self.y]
+            force = grav / (rel_pos[0] * rel_pos[0] + rel_pos[1] * rel_pos[1]) * (grav_points_mass * particle_mass)
             total_gravity[0] += rel_pos[0] * force
             total_gravity[1] += rel_pos[1] * force
+
+            if movable_grav_points:
+                grav_p_vels[pos][0] -= rel_pos[0] * force / max(num_particles, 1) / grav_points_mass
+                grav_p_vels[pos][1] -= rel_pos[1] * force / max(num_particles, 1) / grav_points_mass
 
         self.x_v += total_gravity[0]
         self.y_v += total_gravity[1]
@@ -91,6 +103,10 @@ while True:
     for particle in particles:
         particle.update()
         particle.render()
+    for pos in range(len(grav_points)):
+        grav_points[pos][0] += grav_p_vels[pos][0]
+        grav_points[pos][1] += grav_p_vels[pos][1]
+
 
     # update screen
     pygame.display.flip()
